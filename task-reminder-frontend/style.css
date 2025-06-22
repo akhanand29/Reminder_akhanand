@@ -1,0 +1,743 @@
+/* Modern CSS Reset and Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --primary-color: #007aff;
+  --primary-dark: #005bb5;
+  --primary-light: #66b3ff;
+  --secondary-color: #5856d6;
+  --success-color: #34c759;
+  --warning-color: #ff9500;
+  --danger-color: #ff3b30;
+  --background-primary: #f5f5f7;
+  --background-secondary: #ffffff;
+  --surface-color: #f2f2f7;
+  --text-primary: #1c1c1e;
+  --text-secondary: #3c3c43;
+  --text-tertiary: #888;
+  --border-color: #d1d1d6;
+  --shadow-light: 0 2px 10px rgba(0, 0, 0, 0.05);
+  --shadow-medium: 0 10px 30px rgba(0, 0, 0, 0.1);
+  --shadow-heavy: 0 20px 60px rgba(0, 0, 0, 0.15);
+  --gradient-primary: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
+  --gradient-surface: linear-gradient(145deg, #ffffff 0%, #f8f8fa 100%);
+  --border-radius-sm: 8px;
+  --border-radius-md: 12px;
+  --border-radius-lg: 20px;
+  --border-radius-xl: 24px;
+  --transition-fast: 0.2s ease-out;
+  --transition-medium: 0.3s ease-out;
+  --transition-slow: 0.5s ease-out;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color: var(--text-primary);
+  line-height: 1.6;
+  padding: 2rem 1rem;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Enhanced Background with Animated Gradient */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ed 50%, #f5f5f7 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  z-index: -2;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(0, 122, 255, 0.03) 0%, transparent 70%);
+  animation: floatingOrb 20s linear infinite;
+  z-index: -1;
+}
+
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes floatingOrb {
+  0% { transform: rotate(0deg) translateX(100px) rotate(0deg); }
+  100% { transform: rotate(360deg) translateX(100px) rotate(-360deg); }
+}
+
+/* Main Layout */
+.app-layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2.5rem;
+  justify-content: center;
+  max-width: 1400px;
+  margin: 0 auto;
+  animation: fadeInUp 0.8s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Enhanced Containers */
+.app-container,
+.calendar-wrapper {
+  flex: 1 1 350px;
+  max-width: 450px;
+  padding: 2rem;
+  border-radius: var(--border-radius-xl);
+  background: var(--gradient-surface);
+  box-shadow: var(--shadow-medium);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(2px);
+  transition: all var(--transition-medium);
+  position: relative;
+  overflow: hidden;
+}
+
+.app-container::before,
+.calendar-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--gradient-primary);
+  border-radius: var(--border-radius-xl) var(--border-radius-xl) 0 0;
+}
+
+.app-container:hover,
+.calendar-wrapper:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-heavy);
+}
+
+.calendar-wrapper {
+  max-width: 550px;
+}
+
+/* Headers */
+.header {
+  font-size: 2.5rem;
+  font-weight: 700;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-align: center;
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: var(--gradient-primary);
+  border-radius: 2px;
+}
+
+/* Enhanced Forms */
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+label {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+input,
+select {
+  padding: 1rem;
+  border-radius: var(--border-radius-md);
+  border: 2px solid var(--border-color);
+  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.8);
+  transition: all var(--transition-fast);
+  backdrop-filter: blur(2px);
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+input:hover,
+select:hover {
+  border-color: var(--primary-light);
+}
+
+/* Enhanced Buttons */
+
+button[type="submit"]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left var(--transition-medium);
+}
+
+button[type="submit"]:hover::before {
+  left: 100%;
+}
+
+button[type="submit"]:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-medium);
+}
+
+button[type="submit"]:active {
+  transform: translateY(0);
+}
+
+/* Enhanced Task List */
+#task-list {
+  list-style: none;
+  padding: 0;
+  margin-top: 2rem;
+  max-height: 400px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary-color) transparent;
+}
+
+#task-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+#task-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#task-list::-webkit-scrollbar-thumb {
+  background: var(--primary-color);
+  border-radius: 3px;
+}
+
+.task-item {
+  background: rgba(255, 255, 255, 0.9);
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  border-radius: var(--border-radius-md);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(2px);
+  transition: all var(--transition-fast);
+  animation: slideInRight 0.3s ease-out;
+}
+button[type="submit"] {
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-md);
+  padding: 1rem 2rem;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: none;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.task-item:hover {
+  transform: translateX(5px);
+  box-shadow: var(--shadow-light);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.task-content {
+  flex: 1;
+  margin-right: 1rem;
+}
+
+.task-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.task-meta {
+  font-size: 0.85rem;
+  color: var(--text-tertiary);
+}
+
+.delete-btn {
+  background: var(--danger-color);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  min-width: 80px;
+}
+
+.delete-btn:hover {
+  background: #d12b20;
+  transform: scale(1.05);
+}
+
+/* Enhanced Calendar */
+.calendar-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: var(--border-radius-md);
+  backdrop-filter: blur(2px);
+}
+
+.calendar-controls button {
+  font-size: 1.5rem;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.calendar-controls button:hover {
+  background: var(--primary-dark);
+  transform: scale(1.1);
+}
+
+.calendar-month {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.calendar-day-header {
+  height: 40px;
+  background: var(--gradient-primary);
+  color: white;
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.calendar-day {
+  height: 60px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: all var(--transition-fast);
+  border: 2px solid transparent;
+}
+
+.calendar-day:hover {
+  background: var(--primary-color);
+  color: white;
+  transform: scale(1.05);
+}
+
+.calendar-day.has-task {
+  background: rgba(0, 122, 255, 0.1);
+  border-color: var(--primary-color);
+}
+
+.calendar-day.has-task .dot {
+  position: absolute;
+  bottom: 8px;
+  width: 8px;
+  height: 8px;
+  background: var(--primary-color);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.calendar-day.empty {
+  background: transparent;
+  cursor: default;
+  color: var(--text-tertiary);
+}
+
+.calendar-day.empty:hover {
+  background: transparent;
+  transform: none;
+}
+
+.calendar-tasks-display {
+  margin-top: 2rem;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: var(--border-radius-md);
+  padding: 1.5rem;
+  max-height: 300px;
+  overflow-y: auto;
+  backdrop-filter: blur(2px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.calendar-task {
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: var(--border-radius-sm);
+  border-left: 4px solid var(--primary-color);
+}
+
+/* Enhanced Chatbot */
+#chatbot-button {
+  position: fixed;
+  top: 30px;
+  left: 30px;
+  width: 80px;
+  height: 80px;
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 2.5rem;
+  box-shadow: var(--shadow-medium);
+  cursor: pointer;
+  z-index: 1000;
+  transition: all var(--transition-medium);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#chatbot-button:hover {
+  transform: scale(1.1) rotate(10deg);
+  box-shadow: var(--shadow-heavy);
+}
+
+#chatbot-button:active {
+  transform: scale(0.95);
+}
+
+#chat-window {
+  display: none;
+  position: fixed;
+  top: 130px;
+  left: 30px;
+  background: var(--gradient-surface);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-heavy);
+  width: 350px;
+  max-height: 500px;
+  padding: 2rem;
+  z-index: 1000;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(2px);
+  animation: slideInDown 0.3s ease-out;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+#chat-header {
+  font-weight: 700;
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  color: var(--primary-color);
+  text-align: center;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--surface-color);
+}
+
+#chat-messages {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+}
+
+.chat-message {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border-radius: var(--border-radius-md);
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.chat-message.user {
+  background: var(--primary-color);
+  color: white;
+  margin-left: 20%;
+  text-align: right;
+}
+
+.chat-message.bot {
+  background: var(--surface-color);
+  color: var(--text-primary);
+  margin-right: 20%;
+}
+
+#chat-input-container {
+  display: flex;
+  gap: 0.5rem;
+}
+
+#chat-input {
+  flex: 1;
+  padding: 0.75rem;
+  border-radius: var(--border-radius-md);
+  border: 2px solid var(--border-color);
+  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+#chat-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+#chat-send {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-md);
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+}
+
+#chat-send:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  body {
+    padding: 1rem 0.5rem;
+  }
+  
+  .app-layout {
+    gap: 1.5rem;
+  }
+  
+  .app-container,
+  .calendar-wrapper {
+    padding: 1.5rem;
+    max-width: 100%;
+  }
+  
+  .header {
+    font-size: 2rem;
+  }
+  
+  #chatbot-button {
+    width: 60px;
+    height: 60px;
+    font-size: 2rem;
+    top: 20px;
+    left: 20px;
+  }
+  
+  #chat-window {
+    width: calc(100vw - 40px);
+    left: 20px;
+    top: 100px;
+  }
+  
+  .calendar-day {
+    height: 50px;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .task-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .delete-btn {
+    align-self: flex-end;
+  }
+  
+  .calendar-grid {
+    gap: 0.25rem;
+  }
+  
+  .calendar-day {
+    height: 45px;
+    font-size: 0.8rem;
+  }
+}
+
+/* Loading and Animation States */
+.loading {
+  opacity: 1;
+  pointer-events: none;
+  position: relative;
+}
+
+.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid var(--primary-color);
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Accessibility Improvements */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-delay: -1ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    background-attachment: initial !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+  }
+}
+
+/* Focus indicators for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+  #chatbot-button,
+  #chat-window {
+    display: none !important;
+  }
+  
+  .app-container,
+  .calendar-wrapper {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+}
+
+
+

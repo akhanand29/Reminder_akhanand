@@ -226,13 +226,28 @@ function parseTaskFromText(text) {
         }
         
         // Handle specific times without dates: "at 3 PM", "by 2:30 PM"
+        // THIS IS THE FIXED SECTION
         else if (match[1] && (match[2] || match[3])) {
-          dueDate = new Date(); // Today
-          const time = convertTo24Hour(match[1], match[2], match[3]);
+          dueDate = new Date(); // Start with today
+          
+          // Handle both "3:30 PM" and "3 PM" formats
+          let hour = match[1];
+          let minute = match[2] || '0'; // Default to 0 minutes if not specified
+          let period = match[3] || match[2]; // period might be in match[2] for "3 PM" format
+          
+          // If match[2] is 'am' or 'pm', then there were no minutes specified
+          if (match[2] && (match[2].toLowerCase() === 'am' || match[2].toLowerCase() === 'pm')) {
+            minute = '0';
+            period = match[2];
+          }
+          
+          const time = convertTo24Hour(hour, minute, period);
           dueDate.setHours(time.hour, time.minute, 0, 0);
           
-          // If the specified time has already passed today, schedule for tomorrow
-          if (dueDate < new Date()) {
+          // FIXED: Check if the specified time has already passed today
+          const now = new Date();
+          if (dueDate.getTime() <= now.getTime()) {
+            // If the time has passed, schedule for tomorrow
             dueDate.setDate(dueDate.getDate() + 1);
           }
         }
@@ -339,23 +354,30 @@ function parseTaskFromText(text) {
  * This formats the user's message into a prompt that guides the AI to extract task info
  */
 function createTaskPrompt(message) {
-  return `You are a task extraction assistant. Parse this message and extract the task information.
+  return `Extract task information from this message and respond in the exact format shown below.
 
 Message: "${message}"
 
-Extract:
-1. The main task/action (what needs to be done)
-2. Any description or additional details
-3. When it's due (if mentioned)
-4. Reminder time in minutes (if mentioned, default to 10)
+Required format:
+task: [what needs to be done - be specific and clear]
+description: [any additional details or context, leave blank if none]
+due: [when it's due - format as YYYY-MM-DD HH:MM or relative time like "today 3:00 PM", leave blank if not specified]
+reminder: [how many minutes before due time to remind, default is 10]
 
-Respond in this exact format:
-task: [main task description]
-description: [additional details if any]
-due: [due date/time if mentioned]
-reminder: [reminder time in minutes]
+Examples:
+Message: "remind me to take out trash at 3 pm"
+task: Take out trash
+description: 
+due: today 3:00 PM
+reminder: 10
 
-Message: ${message}`;
+Message: "call mom tomorrow at 2:30 PM, remind me 30 minutes before"
+task: Call mom
+description: 
+due: tomorrow 2:30 PM
+reminder: 30
+
+Now extract from: ${message}`;
 }
 
 /**
@@ -380,8 +402,9 @@ router.post('/', async (req, res) => {
     }
 
     // Make request to Hugging Face AI model
+    // Using a better model for text generation and task extraction
     const hfRes = await fetch(
-      'https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium',
+      'https://api-inference.huggingface.co/models/microsoft/DialoGPT-large',
       {
         method: 'POST',
         headers: {
@@ -391,9 +414,11 @@ router.post('/', async (req, res) => {
         body: JSON.stringify({
           inputs: createTaskPrompt(message),
           parameters: {
-            max_new_tokens: 100,    // Limit response length
-            temperature: 0.7,       // Control randomness (0 = deterministic, 1 = very random)
-            return_full_text: false // Only return generated text, not input
+            max_new_tokens: 150,    // Increased for better responses
+            temperature: 0.3,       // Lower temperature for more consistent parsing
+            return_full_text: false,
+            do_sample: true,
+            top_p: 0.9
           },
           options: { 
             wait_for_model: true,   // Wait if model is loading
@@ -448,10 +473,12 @@ router.post('/', async (req, res) => {
 
     // If we got a valid response from the AI, parse it
     if (generated && generated.trim() !== '') {
+      console.log('AI Response:', generated); // Debug log
+      
       // Use regex to extract structured information from AI response
-      const taskRegex = /task:\s*([^\n]+)/i;
-      const descRegex = /description:\s*([^\n]+)/i;
-      const dueRegex = /due:\s*([^\n]+)/i;
+      const taskRegex = /task:\s*([^\n\r]+)/i;
+      const descRegex = /description:\s*([^\n\r]*)/i;
+      const dueRegex = /due:\s*([^\n\r]*)/i;
       const reminderRegex = /reminder:\s*(\d+)/i;
       
       const taskMatch = generated.match(taskRegex);
@@ -459,22 +486,86 @@ router.post('/', async (req, res) => {
       const dueMatch = generated.match(dueRegex);
       const reminderMatch = generated.match(reminderRegex);
       
-      // Build task object, using fallback parsing for missing pieces
+      console.log('Parsed matches:', { taskMatch, descMatch, dueMatch, reminderMatch }); // Debug log
+      
+      // Helper function to parse the AI's due date format
+      function parseAIDueDate(dueDateStr) {
+        if (!dueDateStr || dueDateStr.trim() === '') {
+          return new Date(); // Default to now
+        }
+        
+        const dueStr = dueDateStr.trim().toLowerCase();
+        const now = new Date();
+        
+        // Handle "today 3:00 PM" format
+        if (dueStr.includes('today')) {
+          const timeMatch = dueStr.match(/(\d{1,2}):(\d{2})\s*(am|pm)/i);
+          if (timeMatch) {
+            const hour = parseInt(timeMatch[1]);
+            const minute = parseInt(timeMatch[2]);
+            const period = timeMatch[3].toLowerCase();
+            
+            let hour24 = hour;
+            if (period === 'pm' && hour !== 12) hour24 += 12;
+            if (period === 'am' && hour === 12) hour24 = 0;
+            
+            const result = new Date();
+            result.setHours(hour24, minute, 0, 0);
+            
+            // If time has passed today, schedule for tomorrow
+            if (result <= now) {
+              result.setDate(result.getDate() + 1);
+            }
+            return result;
+          }
+        }
+        
+        // Handle "tomorrow 2:30 PM" format
+        if (dueStr.includes('tomorrow')) {
+          const timeMatch = dueStr.match(/(\d{1,2}):(\d{2})\s*(am|pm)/i);
+          if (timeMatch) {
+            const hour = parseInt(timeMatch[1]);
+            const minute = parseInt(timeMatch[2]);
+            const period = timeMatch[3].toLowerCase();
+            
+            let hour24 = hour;
+            if (period === 'pm' && hour !== 12) hour24 += 12;
+            if (period === 'am' && hour === 12) hour24 = 0;
+            
+            const result = new Date();
+            result.setDate(result.getDate() + 1);
+            result.setHours(hour24, minute, 0, 0);
+            return result;
+          }
+        }
+        
+        // Try to parse as standard date format
+        const parsedDate = new Date(dueDateStr);
+        if (!isNaN(parsedDate.getTime())) {
+          return parsedDate;
+        }
+        
+        // Fallback to current time
+        return new Date();
+      }
+      
+      // Build task object with AI-extracted data
       const task = {
-        title: taskMatch ? taskMatch[1].trim() : parseTaskFromText(message).title,
-        description: descMatch ? descMatch[1].trim() : parseTaskFromText(message).description,
+        title: taskMatch ? taskMatch[1].trim() : message,
+        description: descMatch ? descMatch[1].trim() : '',
         dueDate: (() => {
           if (dueMatch && dueMatch[1].trim() !== '') {
-            const parsedDate = new Date(dueMatch[1]);
-            return !isNaN(parsedDate.getTime()) ? parsedDate.toISOString() : parseTaskFromText(message).dueDate;
+            return parseAIDueDate(dueMatch[1]).toISOString();
           }
-          return parseTaskFromText(message).dueDate;
+          return new Date().toISOString();
         })(),
-        reminderTime: reminderMatch ? reminderMatch[1] : parseTaskFromText(message).reminderTime,
+        reminderTime: reminderMatch ? reminderMatch[1] : '10',
       };
       
+      console.log('Final task from AI:', task); // Debug log
       return res.json(task);
     } else {
+      console.log('AI generated empty response, using fallback');
       // AI didn't generate useful output, use local parsing
       const task = parseTaskFromText(message);
       return res.json(task);

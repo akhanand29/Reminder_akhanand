@@ -1,6 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- PWA Manifest -->
+<link rel="manifest" href="./manifest.json">
+
+<!-- Meta tags for mobile -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Tasks">
+
+<!-- Icons for iOS -->
+<link rel="apple-touch-icon" href="./icon-256.png">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TaskFlow Pro - Smart Reminders</title>
@@ -939,7 +951,18 @@
     <input type="text" id="chat-input" placeholder="e.g. Add reminder on June 21st at 3pm" />
     <button id="chat-submit">Send</button>
   </div>
-
-  <script src="script.js"></script>
+<script>
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+    .then(registration => {
+      console.log('SW registered: ', registration);
+    })
+    .catch(registrationError => {
+      console.log('SW registration failed: ', registrationError);
+    });
+}
+</script>
+<script src="script.js"></script>
 </body>
 </html>

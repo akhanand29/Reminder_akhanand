@@ -15,7 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const completedTasksEl = document.getElementById('completed-tasks');
   const overdueTasksEl = document.getElementById('overdue-tasks');
   
-  const API_BASE_URL = 'http://localhost:3000/api/tasks';
+  var base_url = window.location.origin + '/' + window.location.pathname.split ('/') [1];
+  const API_BASE_URL = base_url + 'api/tasks';
   let allTasks = [];
   let currentFilter = 'all';
   let searchQuery = '';

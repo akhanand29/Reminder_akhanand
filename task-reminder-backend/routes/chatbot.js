@@ -1,28 +1,63 @@
-// routes/chatbot.js - Task extraction chatbot endpoint
+/**
+ * =============================================================================
+ * CHATBOT.JS - TASK EXTRACTION CHATBOT ENDPOINT
+ * =============================================================================
+ * 
+ * This module provides a chatbot endpoint that converts natural language text
+ * into structured task data. It extracts task title, description, due date,
+ * and reminder timing using both AI-powered and rule-based parsing.
+ * 
+ * Features:
+ * - Hugging Face AI integration for intelligent task extraction
+ * - Comprehensive rule-based fallback parsing
+ * - Natural language date/time parsing
+ * - Flexible reminder timing extraction
+ * - Multiple input format support
+ * 
+ * =============================================================================
+ */
+
+// =============================================================================
+// DEPENDENCIES AND SETUP
+// =============================================================================
+
 const express = require('express');
 const fetch = require('node-fetch'); // For making HTTP requests to Hugging Face API
 require('dotenv').config(); // Load environment variables from .env file
 
 const router = express.Router();
 
+// =============================================================================
+// CORE PARSING FUNCTION
+// =============================================================================
+
 /**
  * MAIN FUNCTION: parseTaskFromText()
- * This is the core logic that converts natural language text into structured task data
- * It extracts: task title, description, due date, and reminder timing
+ * 
+ * Converts natural language text into structured task data by extracting:
+ * - Task title and description
+ * - Due date and time
+ * - Reminder timing preferences
+ * 
+ * @param {string} text - Natural language input describing a task
+ * @returns {Object} Structured task object with title, description, dueDate, reminderTime
  */
 function parseTaskFromText(text) {
   const originalText = text.trim();
   let normalizedText = originalText.toLowerCase(); // Convert to lowercase for pattern matching
   
-  // STEP 1: EXTRACT REMINDER TIME
-  // These regex patterns look for different ways people specify reminder timing
+  // =========================================================================
+  // STEP 1: EXTRACT REMINDER TIME PREFERENCES
+  // =========================================================================
+  
+  // Define regex patterns for different reminder timing formats
   const reminderPatterns = [
-    // "remind me 30 minutes before" or "alert me 1 hour ahead"
+    // Advanced notice patterns: "remind me 30 minutes before" or "alert me 1 hour ahead"
     /remind me (?:in |after )?(\d+)\s*(minute|min|hour|hr)s?\s+(?:before|ahead)/i,
     /set (?:a )?reminder (?:for )?(\d+)\s*(minute|min|hour|hr)s?\s+(?:before|ahead)/i,
     /alert me (\d+)\s*(minute|min|hour|hr)s?\s+(?:before|ahead)/i,
     
-    // "remind me in 30 minutes" (direct timing - means do the task in 30 minutes)
+    // Direct timing patterns: "remind me in 30 minutes" (do task in 30 minutes)
     /remind me (?:in |after )?(\d+)\s*(minute|min|hour|hr)s?(?!\s+(?:before|ahead))/i,
     /set (?:a )?reminder (?:for |in )?(\d+)\s*(minute|min|hour|hr)s?(?!\s+(?:before|ahead))/i,
     /alert me (?:in |after )?(\d+)\s*(minute|min|hour|hr)s?(?!\s+(?:before|ahead))/i,
@@ -32,7 +67,7 @@ function parseTaskFromText(text) {
   let reminderTime = '10'; // Default: remind 10 minutes before due time
   let isDirectTiming = false; // Flag to track if "in X minutes" means do task in X minutes
   
-  // Loop through patterns to find reminder timing
+  // Process reminder timing patterns
   for (const pattern of reminderPatterns) {
     const match = originalText.match(pattern);
     if (match) {
@@ -60,42 +95,52 @@ function parseTaskFromText(text) {
     }
   }
   
-  // STEP 2: EXTRACT DUE DATE/TIME
+  // =========================================================================
+  // STEP 2: EXTRACT DUE DATE AND TIME
+  // =========================================================================
+  
   // Comprehensive patterns for parsing when something is due
   const timePatterns = [
-    // "at 3:30 PM tomorrow" or "on Monday at 2:00 PM"
+    // Specific time with day: "at 3:30 PM tomorrow" or "on Monday at 2:00 PM"
     /(?:at|on|by|due)\s+(\d{1,2}):(\d{2})\s*(am|pm)?\s*(?:on\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow)/i,
     
-    // "tomorrow at 3:30 pm" or "today at 2 pm"
+    // Relative day with time: "tomorrow at 3:30 pm" or "today at 2 pm"
     /(?:tomorrow|today)\s+(?:at\s+)?(\d{1,2}):(\d{2})\s*(am|pm)/i,
     /(?:tomorrow|today)\s+(?:at\s+)?(\d{1,2})\s*(am|pm)/i,
     
-    // "on Monday" or "next Tuesday at 3 PM"
+    // Weekday patterns: "on Monday" or "next Tuesday at 3 PM"
     /(?:on\s+|next\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s*(?:at\s+(\d{1,2}):?(\d{2})?\s*(am|pm)?)?/i,
     
-    // "in 2 hours" or "after 30 minutes"
+    // Relative time: "in 2 hours" or "after 30 minutes"
     /(?:in|after)\s+(\d+)\s*(minute|min|hour|hr|day)s?/i,
     
-    // "at 3:30 PM" or "by 2 PM" (assumes today)
+    // Time only (assumes today): "at 3:30 PM" or "by 2 PM"
     /(?:at|by)\s+(\d{1,2}):(\d{2})\s*(am|pm)/i,
     /(?:at|by)\s+(\d{1,2})\s*(am|pm)/i,
     
     // Date formats: "on 12/25" or "by 3/15/2024 at 2 PM"
     /(?:on|by|due)\s+(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\s*(?:at\s+(\d{1,2}):?(\d{2})?\s*(am|pm)?)?/i,
     
-    // "on January 15th at 2 PM"
+    // Month and day: "on January 15th at 2 PM"
     /(?:on|by|due)\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})(?:st|nd|rd|th)?\s*(?:at\s+(\d{1,2}):?(\d{2})?\s*(am|pm)?)?/i,
     
-    // Special keywords
+    // Special time keywords
     /(today|tomorrow|tonight|this morning|this afternoon|this evening)/i
   ];
   
   let dueDate = new Date(); // Default to current time
   let foundTimePhrase = '';
   
+  // =========================================================================
+  // DATE/TIME HELPER FUNCTIONS
+  // =========================================================================
+  
   /**
-   * Helper function: Get the next occurrence of a specific weekday
+   * Get the next occurrence of a specific weekday
    * Example: If today is Tuesday and we want "Friday", it returns this Friday
+   * 
+   * @param {string} dayName - Name of the day (e.g., 'friday')
+   * @returns {Date} Next occurrence of that weekday
    */
   function getNextWeekday(dayName) {
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -116,8 +161,13 @@ function parseTaskFromText(text) {
   }
   
   /**
-   * Helper function: Convert 12-hour time format to 24-hour
+   * Convert 12-hour time format to 24-hour
    * Example: convertTo24Hour("2", "30", "pm") returns {hour: 14, minute: 30}
+   * 
+   * @param {string} hour - Hour in 12-hour format
+   * @param {string} minute - Minutes (optional)
+   * @param {string} period - AM/PM indicator
+   * @returns {Object} 24-hour time object with hour and minute properties
    */
   function convertTo24Hour(hour, minute, period) {
     let hour24 = parseInt(hour);
@@ -134,6 +184,10 @@ function parseTaskFromText(text) {
     
     return { hour: hour24, minute: min };
   }
+  
+  // =========================================================================
+  // PROCESS TIME PATTERNS
+  // =========================================================================
   
   // Try to match each time pattern against the original text
   for (const pattern of timePatterns) {
@@ -226,7 +280,6 @@ function parseTaskFromText(text) {
         }
         
         // Handle specific times without dates: "at 3 PM", "by 2:30 PM"
-        // THIS IS THE FIXED SECTION
         else if (match[1] && (match[2] || match[3])) {
           dueDate = new Date(); // Start with today
           
@@ -244,7 +297,7 @@ function parseTaskFromText(text) {
           const time = convertTo24Hour(hour, minute, period);
           dueDate.setHours(time.hour, time.minute, 0, 0);
           
-          // FIXED: Check if the specified time has already passed today
+          // Check if the specified time has already passed today
           const now = new Date();
           if (dueDate.getTime() <= now.getTime()) {
             // If the time has passed, schedule for tomorrow
@@ -280,7 +333,10 @@ function parseTaskFromText(text) {
     }
   }
   
+  // =========================================================================
   // STEP 3: EXTRACT TASK TITLE AND DESCRIPTION
+  // =========================================================================
+  
   let taskTitle = '';
   let taskDescription = '';
   
@@ -349,9 +405,16 @@ function parseTaskFromText(text) {
   };
 }
 
+// =============================================================================
+// AI INTEGRATION FUNCTIONS
+// =============================================================================
+
 /**
- * Helper function to create a structured prompt for the Hugging Face AI model
+ * Create a structured prompt for the Hugging Face AI model
  * This formats the user's message into a prompt that guides the AI to extract task info
+ * 
+ * @param {string} message - User's natural language message
+ * @returns {string} Formatted prompt for AI processing
  */
 function createTaskPrompt(message) {
   return `Extract task information from this message and respond in the exact format shown below.
@@ -380,27 +443,43 @@ reminder: 30
 Now extract from: ${message}`;
 }
 
+// =============================================================================
+// MAIN ROUTE HANDLER
+// =============================================================================
+
 /**
- * MAIN ROUTE HANDLER
  * POST endpoint that accepts a message and returns structured task data
  * Uses Hugging Face AI as primary method, falls back to local parsing
+ * 
+ * Request body: { message: "natural language task description" }
+ * Response: { title, description, dueDate, reminderTime }
  */
 router.post('/', async (req, res) => {
   const { message } = req.body;
   
-  // Validate input
+  // =========================================================================
+  // INPUT VALIDATION
+  // =========================================================================
+  
   if (!message || message.trim() === '') {
     return res.status(400).json({ error: 'Message is required' });
   }
 
   try {
-    // Check if Hugging Face API key is available
+    // =========================================================================
+    // CHECK HUGGING FACE API AVAILABILITY
+    // =========================================================================
+    
     if (!process.env.HUGGINGFACE_API_KEY) {
       console.warn('No HF API key found, using fallback parsing');
       const task = parseTaskFromText(message);
       return res.json(task);
     }
 
+    // =========================================================================
+    // HUGGING FACE API REQUEST
+    // =========================================================================
+    
     // Make request to Hugging Face AI model
     // Using a better model for text generation and task extraction
     const hfRes = await fetch(
@@ -428,7 +507,10 @@ router.post('/', async (req, res) => {
       }
     );
 
-    // Handle different error scenarios from Hugging Face API
+    // =========================================================================
+    // HANDLE API ERRORS WITH FALLBACKS
+    // =========================================================================
+    
     if (hfRes.status === 401) {
       console.error('HF API Authentication failed - check your API key');
       const task = parseTaskFromText(message);
@@ -451,7 +533,10 @@ router.post('/', async (req, res) => {
       return res.json(task);
     }
 
-    // Validate that we received JSON response
+    // =========================================================================
+    // VALIDATE RESPONSE FORMAT
+    // =========================================================================
+    
     const contentType = hfRes.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
       console.warn('Non-JSON response, using fallback');
@@ -460,6 +545,10 @@ router.post('/', async (req, res) => {
     }
 
     const hfJson = await hfRes.json();
+    
+    // =========================================================================
+    // EXTRACT AI RESPONSE
+    // =========================================================================
     
     // Extract generated text from different possible response formats
     let generated = '';
@@ -471,6 +560,10 @@ router.post('/', async (req, res) => {
       generated = hfJson;
     }
 
+    // =========================================================================
+    // PROCESS AI RESPONSE
+    // =========================================================================
+    
     // If we got a valid response from the AI, parse it
     if (generated && generated.trim() !== '') {
       console.log('AI Response:', generated); // Debug log
@@ -488,7 +581,13 @@ router.post('/', async (req, res) => {
       
       console.log('Parsed matches:', { taskMatch, descMatch, dueMatch, reminderMatch }); // Debug log
       
-      // Helper function to parse the AI's due date format
+      /**
+       * Helper function to parse the AI's due date format
+       * Handles various date/time formats returned by the AI
+       * 
+       * @param {string} dueDateStr - Due date string from AI response
+       * @returns {Date} Parsed date object
+       */
       function parseAIDueDate(dueDateStr) {
         if (!dueDateStr || dueDateStr.trim() === '') {
           return new Date(); // Default to now
@@ -572,6 +671,10 @@ router.post('/', async (req, res) => {
     }
 
   } catch (err) {
+    // =========================================================================
+    // ERROR HANDLING AND FALLBACKS
+    // =========================================================================
+    
     console.error('Chatbot error:', err);
     
     // Final fallback: try local parsing

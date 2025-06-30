@@ -1,945 +1,200 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TaskFlow Pro - Smart Reminders</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-    
-    :root {
-      --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-      --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-      --warning-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-      --danger-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-      --dark-gradient: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-      --glass-bg: rgba(255, 255, 255, 0.1);
-      --glass-border: rgba(255, 255, 255, 0.2);
-      --shadow-light: 0 8px 32px rgba(0, 0, 0, 0.1);
-      --shadow-medium: 0 16px 48px rgba(0, 0, 0, 0.15);
-      --shadow-heavy: 0 24px 64px rgba(0, 0, 0, 0.2);
-      --blur-strength: blur(16px);
-      --text-primary: #1a1a1a;
-      --text-secondary: #6b7280;
-      --surface: rgba(255, 255, 255, 0.95);
-      --surface-elevated: rgba(255, 255, 255, 0.98);
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-      background-attachment: fixed;
-      color: var(--text-primary);
-      min-height: 100vh;
-      overflow-x: hidden;
-      position: relative;
-    }
-
-    body::before {
-      content: '';
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><defs><radialGradient id="a" cx="50%" cy="50%"><stop offset="0%" stop-color="rgba(255,255,255,0.1)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/></radialGradient></defs><circle cx="200" cy="200" r="100" fill="url(%23a)"/><circle cx="800" cy="300" r="150" fill="url(%23a)"/><circle cx="400" cy="700" r="120" fill="url(%23a)"/><circle cx="900" cy="800" r="80" fill="url(%23a)"/></svg>') no-repeat center center;
-      background-size: cover;
-      pointer-events: none;
-      z-index: -1;
-    }
-
-    .app-container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 2rem 1rem;
-      position: relative;
-    }
-
-    .header {
-      text-align: center;
-      margin-bottom: 3rem;
-      position: relative;
-    }
-
-    .app-title {
-      font-size: 3.5rem;
-      font-weight: 800;
-      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom: 0.5rem;
-      text-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-      animation: fadeInUp 1s ease-out;
-    }
-
-    .app-subtitle {
-      font-size: 1.2rem;
-      color: rgba(255, 255, 255, 0.8);
-      font-weight: 400;
-      animation: fadeInUp 1s ease-out 0.2s both;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 1rem;
-      margin-bottom: 3rem;
-      animation: fadeInUp 1s ease-out 0.4s both;
-    }
-
-    .stat-card {
-      background: var(--glass-bg);
-      backdrop-filter: var(--blur-strength);
-      border: 1px solid var(--glass-border);
-      border-radius: 20px;
-      padding: 1.5rem;
-      text-align: center;
-      box-shadow: var(--shadow-light);
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .stat-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-      transition: left 0.6s;
-    }
-
-    .stat-card:hover::before {
-      left: 100%;
-    }
-
-    .stat-card:hover {
-      transform: translateY(-8px) scale(1.02);
-      box-shadow: var(--shadow-medium);
-    }
-
-    .stat-number {
-      font-size: 2rem;
-      font-weight: 700;
-      color: white;
-      margin-bottom: 0.5rem;
-    }
-
-    .stat-label {
-      font-size: 0.9rem;
-      color: rgba(255, 255, 255, 0.7);
-      font-weight: 500;
-    }
-
-    .controls-bar {
-      display: flex;
-      gap: 1rem;
-      margin-bottom: 2rem;
-      flex-wrap: wrap;
-      animation: fadeInUp 1s ease-out 0.6s both;
-    }
-
-    .search-container {
-      flex: 1;
-      min-width: 250px;
-      position: relative;
-    }
-
-    .search-input {
-      width: 100%;
-      padding: 1rem 1rem 1rem 3rem;
-      border: none;
-      border-radius: 16px;
-      background: var(--surface);
-      backdrop-filter: var(--blur-strength);
-      font-size: 1rem;
-      color: var(--text-primary);
-      box-shadow: var(--shadow-light);
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .search-input:focus {
-      outline: none;
-      box-shadow: var(--shadow-medium), 0 0 0 3px rgba(102, 126, 234, 0.3);
-      transform: translateY(-2px);
-    }
-
-    .search-icon {
-      position: absolute;
-      left: 1rem;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--text-secondary);
-      pointer-events: none;
-    }
-
-    .filter-buttons {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-
-    .filter-btn {
-      padding: 0.8rem 1.5rem;
-      border: none;
-      border-radius: 12px;
-      background: var(--glass-bg);
-      backdrop-filter: var(--blur-strength);
-      color: rgba(255, 255, 255, 0.8);
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .filter-btn.active,
-    .filter-btn:hover {
-      background: var(--surface);
-      color: var(--text-primary);
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-light);
-    }
-
-    #task-list {
-      list-style: none;
-      display: grid;
-      gap: 1.5rem;
-      margin-bottom: 100px;
-      animation: fadeInUp 1s ease-out 0.8s both;
-    }
-
-    .task-item {
-      background: var(--surface-elevated);
-      backdrop-filter: var(--blur-strength);
-      border-radius: 24px;
-      padding: 2rem;
-      box-shadow: var(--shadow-light);
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      position: relative;
-      overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      animation: slideInUp 0.6s ease-out;
-    }
-
-    .task-item::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 4px;
-      background: var(--primary-gradient);
-    }
-
-    .task-item:hover {
-      transform: translateY(-8px) scale(1.02);
-      box-shadow: var(--shadow-heavy);
-    }
-
-    .task-item.completed {
-      opacity: 0.7;
-      transform: scale(0.98);
-    }
-
-    .task-item.completed::before {
-      background: var(--success-gradient);
-    }
-
-    .task-header {
-      display: flex;
-      align-items: flex-start;
-      gap: 1rem;
-      margin-bottom: 1rem;
-    }
-
-    .task-checkbox {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      border: 2px solid #e5e7eb;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      flex-shrink: 0;
-      margin-top: 0.25rem;
-    }
-
-    .task-checkbox.checked {
-      background: var(--success-gradient);
-      border-color: transparent;
-      color: white;
-    }
-
-    .task-content {
-      flex: 1;
-    }
-
-    .task-title {
-      font-size: 1.3rem;
-      font-weight: 600;
-      color: var(--text-primary);
-      margin-bottom: 0.5rem;
-      transition: all 0.3s ease;
-    }
-
-    .task-item.completed .task-title {
-      text-decoration: line-through;
-      color: var(--text-secondary);
-    }
-
-    .task-description {
-      color: var(--text-secondary);
-      font-size: 1rem;
-      line-height: 1.5;
-      margin-bottom: 1rem;
-    }
-
-    .task-meta {
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-      margin-bottom: 1rem;
-    }
-
-    .meta-item {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.9rem;
-      color: var(--text-secondary);
-      padding: 0.5rem 1rem;
-      background: rgba(102, 126, 234, 0.1);
-      border-radius: 12px;
-    }
-
-    .task-actions {
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .action-btn {
-      padding: 0.5rem;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .delete-btn {
-      background: var(--danger-gradient);
-      color: white;
-    }
-
-    .delete-btn:hover {
-      transform: scale(1.1);
-      box-shadow: 0 4px 16px rgba(250, 112, 154, 0.4);
-    }
-
-    #add-form-container {
-      position: fixed;
-      bottom: -100%;
-      left: 0;
-      right: 0;
-      background: var(--surface-elevated);
-      backdrop-filter: var(--blur-strength);
-      border-radius: 24px 24px 0 0;
-      padding: 2rem;
-      box-shadow: var(--shadow-heavy);
-      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-      z-index: 1000;
-      max-height: 80vh;
-      overflow-y: auto;
-    }
-
-    #add-form-container.show {
-      bottom: 0;
-    }
-
-    .form-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2rem;
-    }
-
-    .form-title {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .close-form-btn {
-      background: none;
-      border: none;
-      font-size: 1.5rem;
-      color: var(--text-secondary);
-      cursor: pointer;
-      padding: 0.5rem;
-      border-radius: 50%;
-      transition: all 0.3s ease;
-    }
-
-    .close-form-btn:hover {
-      background: rgba(107, 114, 128, 0.1);
-      transform: scale(1.1);
-    }
-
-    .form-grid {
-      display: grid;
-      gap: 1.5rem;
-    }
-
-    .form-group {
-      position: relative;
-    }
-
-    .form-label {
-      display: block;
-      font-weight: 600;
-      color: var(--text-primary);
-      margin-bottom: 0.5rem;
-      font-size: 1rem;
-    }
-
-    .form-input {
-      width: 100%;
-      padding: 1rem;
-      border: 2px solid #e5e7eb;
-      border-radius: 16px;
-      font-size: 1rem;
-      color: var(--text-primary);
-      background: white;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .form-input:focus {
-      outline: none;
-      border-color: #667eea;
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-      transform: translateY(-2px);
-    }
-
-    .submit-btn {
-      background: var(--primary-gradient);
-      color: white;
-      border: none;
-      border-radius: 16px;
-      padding: 1.2rem 2rem;
-      font-weight: 600;
-      font-size: 1.1rem;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .submit-btn::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-      transition: left 0.6s;
-    }
-
-    .submit-btn:hover::before {
-      left: 100%;
-    }
-
-    .submit-btn:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
-    }
-
-    #toggle-add-btn {
-      position: fixed;
-      bottom: 2rem;
-      right: 2rem;
-      width: 70px;
-      height: 70px;
-      border-radius: 50%;
-      background: var(--primary-gradient);
-      color: white;
-      font-size: 2rem;
-      border: none;
-      cursor: pointer;
-      box-shadow: var(--shadow-medium);
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      z-index: 999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    #toggle-add-btn:hover {
-      transform: scale(1.1) rotate(90deg);
-      box-shadow: var(--shadow-heavy);
-    }
-
-    #reminder-modal {
-      display: none;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: var(--surface-elevated);
-      backdrop-filter: var(--blur-strength);
-      border-radius: 24px;
-      padding: 2.5rem;
-      box-shadow: var(--shadow-heavy);
-      z-index: 10000;
-      max-width: 400px;
-      width: 90%;
-      text-align: center;
-      animation: modalSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .modal-backdrop {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(8px);
-      z-index: 9999;
-    }
-
-    .modal-backdrop.show {
-      display: block;
-      animation: fadeIn 0.3s ease-out;
-    }
-
-    #reminder-title {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: var(--text-primary);
-      margin-bottom: 1rem;
-    }
-
-    #reminder-desc {
-      color: var(--text-secondary);
-      font-size: 1rem;
-      line-height: 1.5;
-      margin-bottom: 2rem;
-    }
-
-    #acknowledge-btn {
-      background: var(--primary-gradient);
-      color: white;
-      border: none;
-      padding: 1rem 2rem;
-      border-radius: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    #acknowledge-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-    }
-
-    /* Chatbot Styles */
-    #chatbot-button {
-      position: fixed;
-      bottom: 2rem;
-      left: 2rem;
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-      background: var(--secondary-gradient);
-      color: white;
-      font-size: 1.5rem;
-      border: none;
-      cursor: pointer;
-      box-shadow: var(--shadow-medium);
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      z-index: 999;
-    }
-
-    #chatbot-button:hover {
-      transform: scale(1.1);
-      box-shadow: var(--shadow-heavy);
-    }
-
-    #chat-window {
-      position: fixed;
-      bottom: 100px;
-      left: 2rem;
-      width: 800px;
-    
-      background: var(--surface-elevated);
-      backdrop-filter: var(--blur-strength);
-      border-radius: 20px;
-      box-shadow: var(--shadow-heavy);
-      z-index: 1000;
-      display: none;
-      animation: slideInUp 0.3s ease-out;
-    }
-
-    #chat-header {
-      background: var(--secondary-gradient);
-      color: white;
-      padding: 1rem 1.5rem;
-      border-radius: 20px 20px 0 0;
-      font-weight: 600;
-      text-align: center;
-    }
-
-    #chat-input {
-      width: 100%;
-      padding: 1rem 1.5rem;
-      border: none;
-      background: transparent;
-      font-size: 1rem;
-      color: var(--text-primary);
-      resize: none;
-    }
-
-    #chat-input:focus {
-      outline: none;
-    }
-
-    #chat-submit {
-      width: 100%;
-      padding: 1rem;
-      background: var(--secondary-gradient);
-      color: white;
-      border: none;
-      border-radius: 0 0 20px 20px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    #chat-submit:hover {
-      opacity: 0.9;
-    }
-
-    /* Animations */
-    @keyframes fadeInUp {
-      from {
-        opacity: 0;
-        transform: translateY(30px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes slideInUp {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes modalSlideIn {
-      from {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(0.8);
-      }
-      to {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
-      }
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    /* Responsive Design */
-    @media (max-width: 768px) {
-      .app-container {
-        padding: 1rem;
-      }
-
-      .app-title {
-        font-size: 2.5rem;
-      }
-
-      .controls-bar {
-        flex-direction: column;
-      }
-
-      .search-container {
-        min-width: auto;
-      }
-
-      .filter-buttons {
-        justify-content: center;
-      }
-
-      #toggle-add-btn {
-        bottom: 1rem;
-        right: 1rem;
-        width: 60px;
-        height: 60px;
-        font-size: 1.5rem;
-      }
-
-      #chatbot-button {
-        bottom: 1rem;
-        left: 1rem;
-        width: 50px;
-        height: 50px;
-        font-size: 1.2rem;
-      }
-
-      #chat-window {
-        width: calc(100vw - 2rem);
-        left: 1rem;
-        right: 1rem;
-      }
-
-      .task-item {
-        padding: 1.5rem;
-      }
-
-      #add-form-container {
-        padding: 1.5rem;
-      }
-    }
-
-    /* Loading Animation */
-    .loading {
-      opacity: 0.6;
-      pointer-events: none;
-    }
-
-    .loading::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 20px;
-      height: 20px;
-      margin: -10px 0 0 -10px;
-      border: 2px solid #667eea;
-      border-top: 2px solid transparent;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    /* Priority Colors */
-    .priority-high::before { background: var(--danger-gradient); }
-    .priority-medium::before { background: var(--warning-gradient); }
-    .priority-low::before { background: var(--success-gradient); }
-
-    /* Category Badges */
-    .category-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.25rem 0.75rem;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      font-weight: 500;
-      background: rgba(102, 126, 234, 0.1);
-      color: #667eea;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 4rem 2rem;
-      color: rgba(255, 255, 255, 0.7);
-    }
-
-    .empty-state-icon {
-      font-size: 4rem;
-      margin-bottom: 1rem;
-      opacity: 0.5;
-    }
-
-    .empty-state-title {
-      font-size: 1.5rem;
-      font-weight: 600;
-      margin-bottom: 0.5rem;
-    }
-
-    .empty-state-desc {
-      font-size: 1rem;
-      opacity: 0.8;
-    }
-
-.task-checkbox {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 2px solid #e5e7eb;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  flex-shrink: 0;
-  margin-top: 0.25rem;
-  position: relative;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.task-checkbox:hover {
-  transform: scale(1.1);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  border-color: #667eea;
-}
-
-.task-checkbox.checked {
-  background: var(--success-gradient);
-  border-color: transparent;
-  color: white;
-}
-
-.toggle-indicator {
-  position: absolute;
-  top: -3px;
-  right: -3px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  transition: all 0.3s ease;
-  border: 2px solid white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="mywebstyle.css">
 </head>
+
 <body>
-  <div class="app-container">
-    <div class="header">
-      <h1 class="app-title">RemindPlus</h1>
-      <p class="app-subtitle">Remind - Remember - Repeat</p>
-    </div>
+  <!-- Login Screen -->
+  <div class="login-container" id="login-screen" style="display: none;">
+    <div class="login-card">
+      <div class="login-header">
+        <h1>TaskFlow Pro</h1>
+        <p>Smart Reminders for Better Productivity</p>
+      </div>
 
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-number" id="total-tasks">0</div>
-        <div class="stat-label">Total Tasks</div>
+      <div class="error-message" id="login-error" style="display: none;">
+        Login failed. Please try again.
       </div>
-      <div class="stat-card">
-        <div class="stat-number" id="pending-tasks">0</div>
-        <div class="stat-label">Pending</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number" id="completed-tasks">0</div>
-        <div class="stat-label">Completed</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number" id="overdue-tasks">0</div>
-        <div class="stat-label">Overdue</div>
-      </div>
-    </div>
 
-    <div class="controls-bar">
-      <div class="search-container">
-        <input type="text" class="search-input" id="search-tasks" placeholder="Search your tasks..." />
-        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"></circle>
-          <path d="m21 21-4.35-4.35"></path>
-        </svg>
+      <div class="oauth-buttons">
+        <a href="#" class="oauth-button google-button" id="google-login">
+          <i class="fab fa-google"></i>
+          Continue with Google
+        </a>
+        <!-- <a href="#" class="oauth-button github-button" id="github-login">
+          <i class="fab fa-github"></i>
+          Continue with GitHub
+        </a> -->
       </div>
-      <div class="filter-buttons">
-        <button class="filter-btn active" data-filter="all">All</button>
-        <button class="filter-btn" data-filter="pending">Pending</button>
-        <button class="filter-btn" data-filter="completed">Done</button>
-        <button class="filter-btn" data-filter="overdue">Overdue</button>
+
+      <div class="login-footer">
+        <p>Secure authentication powered by OAuth 2.0</p>
       </div>
-    </div>
-
-    <ul id="task-list"></ul>
-
-    <div class="empty-state" id="empty-state" style="display: none;">
-      <div class="empty-state-icon">📝</div>
-      <div class="empty-state-title">No tasks yet</div>
-      <div class="empty-state-desc">Create your first task to get started</div>
     </div>
   </div>
 
-  <div id="add-form-container">
-    <div class="form-header">
-      <h2 class="form-title">Create New Task</h2>
-      <button class="close-form-btn" type="button">&times;</button>
-    </div>
-    <form id="task-form">
-      <div class="form-grid">
-        <div class="form-group">
-          <label class="form-label" for="title">Task Title</label>
-          <input type="text" class="form-input" id="title" placeholder="What needs to be done?" required />
+  <!-- Main App -->
+  <div class="main-app" id="main-app">
+    <!-- User Profile Bar -->
+    <div class="user-profile-bar" id="user-profile" style="display: none;">
+      <div class="profile-info">
+        <div class="profile-avatar-container">
+          <img id="user-avatar" class="profile-avatar" alt="User Avatar" />
+          <div class="online-indicator"></div>
         </div>
-
-        <div class="form-group">
-          <label class="form-label" for="description">Description</label>
-          <input type="text" class="form-input" id="description" placeholder="Add more details..." required />
+        <div class="profile-details">
+          <h3 id="user-name">Loading...</h3>
+          <p id="user-email">Loading...</p>
         </div>
-
-        <div class="form-group">
-          <label class="form-label" for="dueDate">Due Date & Time</label>
-          <input type="datetime-local" class="form-input" id="dueDate" required />
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="reminderTime">Reminder</label>
-          <select class="form-input" id="reminderTime">
-            <option value="1440">24 hours before</option>
-            <option value="60">1 hour before</option>
-            <option value="30">30 minutes before</option>
-            <option value="15">15 minutes before</option>
-            <option value="10">10 minutes before</option>
-          </select>
-        </div>
-
-        <button type="submit" class="submit-btn">Create Task</button>
       </div>
-    </form>
-  </div>
 
-  <button id="toggle-add-btn">+</button>
+      <div class="profile-actions">
+        <div class="task-quick-stats">
+          <div class="quick-stat">
+          </div>
+          <div class="quick-stat">
+          </div>
+        </div>
 
-  <div class="modal-backdrop" id="modal-backdrop"></div>
-  <div id="reminder-modal">
-    <h3 id="reminder-title"></h3>
-    <p id="reminder-desc"></p>
-    <button id="acknowledge-btn">Got it!</button>
-  </div>
+        <div class="profile-buttons">
+          <button class="profile-btn settings-btn" title="Settings">
+            <i class="fas fa-cog"></i>
+          </button>
+          <button class="profile-btn notifications-btn" title="Notifications">
+            <i class="fas fa-bell"></i>
+            <span class="notification-badge">3</span>
+          </button>
+          <button class="logout-button" id="logout-btn">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>Logout</span>
+          </button>
+        </div>
+      </div>
+    </div>
 
-  <button id="chatbot-button">💬</button>
+    <!-- Make sure you have these main containers -->
+    <div id="login-screen">
+      <!-- Your login buttons -->
+      <button id="google-login">Continue with Google</button>
+    </div>
+
+    <div id="main-app" style="display: none;">
+      <!-- Your tasks, chatbot, and other app content -->
+      <div id="user-profile"></div>
+      <!-- Rest of your app -->
+    </div>
+
+    <div class="app-container">
+      <div class="header">
+        <h1 class="app-title">RemindPlus</h1>
+        <p class="app-subtitle">Remind - Remember - Repeat</p>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number" id="total-tasks">0</div>
+          <div class="stat-label">Total Tasks</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="pending-tasks">0</div>
+          <div class="stat-label">Pending</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="completed-tasks">0</div>
+          <div class="stat-label">Completed</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="overdue-tasks">0</div>
+          <div class="stat-label">Overdue</div>
+        </div>
+      </div>
+
+      <div class="controls-bar">
+        <div class="search-container">
+          <input type="text" class="search-input" id="search-tasks" placeholder="Search your tasks..." />
+          <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+        </div>
+        <div class="filter-buttons">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="pending">Pending</button>
+          <button class="filter-btn" data-filter="completed">Done</button>
+          <button class="filter-btn" data-filter="overdue">Overdue</button>
+        </div>
+      </div>
+
+      <ul id="task-list"></ul>
+
+      <div class="empty-state" id="empty-state" style="display: none;">
+        <div class="empty-state-icon">📝</div>
+        <div class="empty-state-title">No tasks yet</div>
+        <div class="empty-state-desc">Create your first task to get started</div>
+      </div>
+    </div>
+
+    <div id="add-form-container">
+      <div class="form-header">
+        <h2 class="form-title">Create New Task</h2>
+        <button class="close-form-btn" type="button">&times;</button>
+      </div>
+      <form id="task-form">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="title">Task Title</label>
+            <input type="text" class="form-input" id="title" placeholder="What needs to be done?" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="description">Description</label>
+            <input type="text" class="form-input" id="description" placeholder="Add more details..." required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="dueDate">Due Date & Time</label>
+            <input type="datetime-local" class="form-input" id="dueDate" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="reminderTime">Reminder</label>
+            <select class="form-input" id="reminderTime">
+              <option value="1440">24 hours before</option>
+              <option value="60">1 hour before</option>
+              <option value="30">30 minutes before</option>
+              <option value="15">15 minutes before</option>
+              <option value="10">10 minutes before</option>
+            </select>
+          </div>
+
+          <button type="submit" class="submit-btn">Create Task</button>
+        </div>
+      </form>
+    </div>
+
+    <button id="toggle-add-btn">+</button>
+
+    <div class="modal-backdrop" id="modal-backdrop"></div>
+    <div id="reminder-modal">
+      <h3 id="reminder-title"></h3>
+      <p id="reminder-desc"></p>
+      <button id="acknowledge-btn">Got it!</button>
+    </div>
+
+    <button id="chatbot-button">💬</button>
     <div id="chat-window">
-    <div id="chat-header">Rachel</div>
-    <input type="text" id="chat-input" placeholder="e.g. Add reminder on June 21st at 3pm" />
-    <button id="chat-submit">Send</button>
+      <div id="chat-header">Rachel</div>
+      <input type="text" id="chat-input" placeholder="e.g. Add reminder on June 21st at 3pm" />
+      <button id="chat-submit">Send</button>
+    </div>
   </div>
-
-  <script type="text/javascript" src="public/script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>

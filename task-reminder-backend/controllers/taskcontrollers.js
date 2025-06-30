@@ -1,103 +1,206 @@
-// Import the Task model from the models directory
-// This provides access to the Task schema and database operations
 const Task = require('../models/Task');
+const mongoose = require('mongoose');
 
-/**
- * GET /tasks - Retrieve all tasks from the database
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- */
-exports.getTasks = async (req, res) => {
+// Get all tasks for the authenticated user (DATABASE ONLY)
+const getTasks = async (req, res) => {
   try {
-    // Fetch all tasks from the database (no filter criteria)
-    const tasks = await Task.find();
+    // Ensure user is authenticated
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    console.log('Getting tasks for user:', req.user._id);
     
-    // Send tasks as JSON response with 200 status (default)
-    res.json(tasks);
+    // Get tasks from database ONLY
+    const tasks = await Task.find({ userId: req.user._id }).sort({ createdAt: -1 });
+    console.log('Tasks found in database:', tasks.length);
     
-  } catch (err) {
-    // Handle any database or server errors
-    res.status(500).json({ error: 'Server error' });
+    res.json({
+      tasks: tasks,
+      count: tasks.length,
+      userId: req.user._id
+    });
+  } catch (error) {
+    console.error('Get tasks error:', error);
+    res.status(500).json({ error: 'Failed to fetch tasks' });
   }
 };
 
-/**
- * POST /tasks - Create a new task
- * @param {Object} req - Express request object (contains task data in req.body)
- * @param {Object} res - Express response object
- */
-exports.createTask = async (req, res) => {
+// Create a new task (DATABASE ONLY)
+const createTask = async (req, res) => {
   try {
-    // Log incoming task data for debugging purposes
-    console.log('Received task:', req.body);
+    // Ensure user is authenticated
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    console.log('Creating task for user:', req.user._id);
     
-    // Create new Task instance using data from request body
-    const newTask = new Task(req.body);
+    // Create task object with user ID
+    const taskData = {
+      ...req.body,
+      userId: req.user._id // CRITICAL: Associate with user
+    };
     
-    // Save the new task to the database
-    await newTask.save();
+    console.log("TaskData = ",taskData);
+    // Save directly to database
+    const task = new Task(taskData);
+    const savedTask = await task.save();
     
-    // Return the created task with 201 (Created) status
-    res.status(201).json(newTask);
+    console.log('✅ Task saved to database:', savedTask._id);
     
-  } catch (err) {
-    // Log error details for debugging
-    console.error('Create task error:', err);
+    res.status(201).json({
+      task: savedTask,
+      message: 'Task created successfully'
+    });
     
-    // Return 400 (Bad Request) for validation errors or malformed data
-    res.status(400).json({ error: 'Bad request' });
+  } catch (error) {
+    console.error('Create task error:', error);
+    res.status(400).json({ error: error.message });
   }
 };
 
-/**
- * DELETE /tasks/:id - Delete a specific task by ID
- * @param {Object} req - Express request object (contains task ID in req.params.id)
- * @param {Object} res - Express response object
- */
-exports.deleteTask = async (req, res) => {
+// Update a task (DATABASE ONLY)
+const updateTask = async (req, res) => {
   try {
-    // Find task by ID and delete it in one operation
-    // Note: This doesn't check if the task exists before deletion
-    await Task.findByIdAndDelete(req.params.id);
+    // Ensure user is authenticated
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    console.log('Updating task:', req.params.id, 'for user:', req.user._id);
     
-    // Send 204 (No Content) status indicating successful deletion with no response body
-    res.status(204).send();
+    // Find and update task in database (ensure it belongs to user)
+    const task = await Task.findOneAndUpdate(
+      { 
+        _id: req.params.id, 
+        userId: req.user._id // CRITICAL: Only update user's own tasks
+      },
+      req.body,
+      { new: true } // Return updated document
+    );
     
-  } catch (err) {
-    // Handle errors (invalid ID format, database issues, etc.)
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found or access denied' });
+    }
+    
+    console.log('✅ Task updated in database');
+    
+    res.json({
+      task: task,
+      message: 'Task updated successfully'
+    });
+    
+  } catch (error) {
+    console.error('Update task error:', error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// Delete a task (DATABASE ONLY)
+const deleteTask = async (req, res) => {
+  try {
+    // Ensure user is authenticated
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    console.log('Deleting task:', req.params.id, 'for user:', req.user._id);
+    
+    // Find and delete task from database (ensure it belongs to user)
+    const task = await Task.findOneAndDelete({
+      _id: req.params.id,
+      userId: req.user._id // CRITICAL: Only delete user's own tasks
+    });
+    
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found or access denied' });
+    }
+    
+    console.log('✅ Task deleted from database');
+    
+    res.json({ 
+      message: 'Task deleted successfully',
+      deletedTask: task
+    });
+    
+  } catch (error) {
+    console.error('Delete task error:', error);
     res.status(500).json({ error: 'Failed to delete task' });
   }
 };
 
-/**
- * PATCH/PUT /tasks/:id/toggle - Toggle the completion status of a specific task
- * @param {Object} req - Express request object (contains task ID in req.params.id)
- * @param {Object} res - Express response object
- */
-exports.toggleTaskCompletion = async (req, res) => {
-  console.log('Toggle request received for ID:', req.params.id);
-  
+// Get a single task (DATABASE ONLY)
+const getTask = async (req, res) => {
   try {
-    const task = await Task.findById(req.params.id);
-    console.log('Task found - ID:', task?._id, 'Current isCompleted:', task?.isCompleted);
+    // Ensure user is authenticated
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    console.log('Getting task:', req.params.id, 'for user:', req.user._id);
+    
+    // Find task in database (ensure it belongs to user)
+    const task = await Task.findOne({
+      _id: req.params.id,
+      userId: req.user._id // CRITICAL: Only get user's own tasks
+    });
     
     if (!task) {
-      return res.status(404).json({ 
-        error: 'Task not found on server. ID: ' + req.params.id + ' may be invalid or task may have been deleted.' 
-      });
+      return res.status(404).json({ error: 'Task not found or access denied' });
     }
     
-    task.isCompleted = !task.isCompleted;
+    res.json({
+      task: task
+    });
     
-    console.log('Toggling isCompleted to:', task.isCompleted);
-    
-    const savedTask = await task.save();
-    console.log('✅ SAVE SUCCESSFUL - New isCompleted status:', savedTask.isCompleted);
-    
-    res.json(savedTask);
-    
-  } catch (err) {
-    console.error('Toggle task error:', err);
-    res.status(500).json({ error: 'Server error: ' + err.message });
+  } catch (error) {
+    console.error('Get task error:', error);
+    res.status(500).json({ error: 'Failed to fetch task' });
   }
+};
+
+// Get user's task statistics
+const getTaskStats = async (req, res) => {
+  try {
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const totalTasks = await Task.countDocuments({ userId: req.user._id });
+    const completedTasks = await Task.countDocuments({ 
+      userId: req.user._id, 
+      completed: true 
+    });
+    const pendingTasks = await Task.countDocuments({ 
+      userId: req.user._id, 
+      completed: false 
+    });
+    const overdueTasks = await Task.countDocuments({ 
+      userId: req.user._id, 
+      completed: false,
+      dueDate: { $lt: new Date() }
+    });
+
+    res.json({
+      stats: {
+        total: totalTasks,
+        completed: completedTasks,
+        pending: pendingTasks,
+        overdue: overdueTasks
+      }
+    });
+  } catch (error) {
+    console.error('Get task stats error:', error);
+    res.status(500).json({ error: 'Failed to fetch task statistics' });
+  }
+};
+
+module.exports = {
+  getTasks,
+  createTask,
+  updateTask,
+  deleteTask,
+  getTask,
+  getTaskStats
 };

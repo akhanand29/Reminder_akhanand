@@ -1,32 +1,86 @@
-// Import Express framework and create a router instance
+// routes/taskroutes.js - FIXED VERSION
 const express = require('express');
 const router = express.Router();
+const Task = require('../models/Task');
+const Controller = require('../controllers/taskcontrollers')
 
-// Import the task controller module that contains the business logic
-const controller = require('../controllers/taskcontrollers');
+// Middleware to ensure user is authenticated
+const requireAuth = (req, res, next) => {
+  console.log('🔐 Checking authentication...');
+  console.log('User in session:', req.user ? req.user._id : 'None');
+  
+  if (!req.isAuthenticated || !req.isAuthenticated() || !req.user || !req.user._id) {
+    console.log('❌ Authentication failed');
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  
+  console.log('✅ User authenticated:', req.user._id);
+  next();
+};
 
-// Define route handlers for different HTTP methods and endpoints
+// GET /api/tasks - Load tasks for authenticated user ONLY
+router.get('/', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    console.log('🔍 Loading tasks for user:', userId);
+    
+    // CRITICAL: Only get tasks that belong to this specific user
+    const tasks = await Task.find({ userId: userId }).sort({ createdAt: -1 });
+    
+    console.log(`✅ Found ${tasks.length} tasks for user ${userId}`);
+    console.log('Task IDs:', tasks.map(t => t._id));
+    
+    res.json({
+      tasks: tasks,
+      count: tasks.length,
+      userId: userId
+    });
+  } catch (error) {
+    console.error('❌ Error loading tasks:', error);
+    res.status(500).json({ error: 'Failed to load tasks' });
+  }
+});
 
-// GET route - Retrieve all tasks
-// When a GET request is made to the base path '/', call the getTasks function
-router.get('/', controller.getTasks);
+// POST /api/tasks - Create task for authenticated user ONLY
+router.post('/', requireAuth, async (req, res) => {
+  try {
 
-// POST route - Create a new task
-// When a POST request is made to the base path '/', call the createTask function
-router.post('/', controller.createTask);
+    Controller.createTask(req, res)
+  
+  } catch (error) {
+    console.error('❌ Error creating task:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
-// DELETE route - Remove a specific task by ID
-// When a DELETE request is made to '/:id', call the deleteTask function
-// The ':id' is a route parameter that captures the task ID from the URL
-router.delete('/:id', controller.deleteTask);
+// PUT /api/tasks/:id - Update task (user's own tasks only)
+router.put('/:id', requireAuth, async (req, res) => {
+  try {
+    Controller.updateTask(req, res);
+  } catch (error) {
+    console.error('❌ Error updating task:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
-// PUT route - Update/toggle task completion status
-// When a PUT request is made to '/:id', call the toggleTaskCompletion function
-// The ':id' parameter allows targeting a specific task for status updates
-router.put('/:id', controller.toggleTaskCompletion);
+// DELETE /api/tasks/:id - Delete task (user's own tasks only)
+router.delete('/:id', requireAuth, async (req, res) => {
+  try {
+    Controller.deleteTask(req, res);
+  } catch (error) {
+    console.error('❌ Error deleting task:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
-// Export the router so it can be used in the main application
+// GET /api/tasks/stats - Get user's task statistics
+router.get('/stats', requireAuth, async (req, res) => {
+  try {
+    Controller.getTasks(req, res);
+  } catch (error) {
+    console.error('❌ Error getting task stats:', error);
+    res.status(500).json({ error: 'Failed to fetch task statistics' });
+  }
+});
+
 module.exports = router;
-
-
-

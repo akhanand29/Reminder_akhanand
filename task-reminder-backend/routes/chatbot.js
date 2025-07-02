@@ -26,36 +26,56 @@ const requireAuth = (req, res, next) => {
 };
 
 /**
- * MAIN FUNCTION: parseTaskFromText()
+ * FIXED FUNCTION: parseTaskFromText()
  * This is the core logic that converts natural language text into structured task data
- * It extracts: task title, description, due date, and reminder timing
+ * FIXED: Now properly captures different reminder timing formats
  */
 function parseTaskFromText(text) {
   const originalText = text.trim();
   let normalizedText = originalText.toLowerCase(); // Convert to lowercase for pattern matching
   
-  // STEP 1: EXTRACT REMINDER TIME
+  console.log('🔍 Parsing text:', originalText);
+  
+  // STEP 1: EXTRACT REMINDER TIME - FIXED PATTERNS
   // These regex patterns look for different ways people specify reminder timing
   const reminderPatterns = [
-    // "remind me 30 minutes before" or "alert me 1 hour ahead"
-    /remind me (?:in |after )?(\d+)\s*(minute|min|hour|hr)s?\s+(?:before|ahead)/i,
-    /set (?:a )?reminder (?:for )?(\d+)\s*(minute|min|hour|hr)s?\s+(?:before|ahead)/i,
-    /alert me (\d+)\s*(minute|min|hour|hr)s?\s+(?:before|ahead)/i,
+    // FIXED: "remind me 30 minutes before" or "alert me 1 hour before"
+    /remind\s+me\s+(\d+)\s*(minute|min|hour|hr)s?\s+before/i,
+    /alert\s+me\s+(\d+)\s*(minute|min|hour|hr)s?\s+before/i,
+    /notify\s+me\s+(\d+)\s*(minute|min|hour|hr)s?\s+before/i,
+    
+    // FIXED: "set reminder 15 minutes before" or "reminder 30 minutes ahead"
+    /(?:set\s+)?reminder\s+(\d+)\s*(minute|min|hour|hr)s?\s+(?:before|ahead)/i,
+    /notification\s+(\d+)\s*(minute|min|hour|hr)s?\s+(?:before|ahead)/i,
+    
+    // FIXED: More specific "before" patterns
+    /(\d+)\s*(minute|min|hour|hr)s?\s+before/i,
+    /(\d+)\s*(minute|min|hour|hr)s?\s+ahead/i,
+    /(\d+)\s*(minute|min|hour|hr)s?\s+early/i,
+    /(\d+)\s*(minute|min|hour|hr)s?\s+in\s+advance/i,
     
     // "remind me in 30 minutes" (direct timing - means do the task in 30 minutes)
-    /remind me (?:in |after )?(\d+)\s*(minute|min|hour|hr)s?(?!\s+(?:before|ahead))/i,
-    /set (?:a )?reminder (?:for |in )?(\d+)\s*(minute|min|hour|hr)s?(?!\s+(?:before|ahead))/i,
-    /alert me (?:in |after )?(\d+)\s*(minute|min|hour|hr)s?(?!\s+(?:before|ahead))/i,
-    /notification (?:in |after )?(\d+)\s*(minute|min|hour|hr)s?/i
+    /remind\s+me\s+in\s+(\d+)\s*(minute|min|hour|hr)s?(?!\s+(?:before|ahead))/i,
+    /alert\s+me\s+in\s+(\d+)\s*(minute|min|hour|hr)s?(?!\s+(?:before|ahead))/i,
+    /notify\s+me\s+in\s+(\d+)\s*(minute|min|hour|hr)s?(?!\s+(?:before|ahead))/i,
+    
+    // Generic "in X minutes/hours" patterns
+    /in\s+(\d+)\s*(minute|min|hour|hr)s?(?!\s+(?:before|ahead))/i
   ];
   
   let reminderTime = 10; // Default: remind 10 minutes before due time
   let isDirectTiming = false; // Flag to track if "in X minutes" means do task in X minutes
+  let matchedPattern = null;
   
   // Loop through patterns to find reminder timing
-  for (const pattern of reminderPatterns) {
+  for (let i = 0; i < reminderPatterns.length; i++) {
+    const pattern = reminderPatterns[i];
     const match = originalText.match(pattern);
     if (match) {
+      console.log('🎯 Matched reminder pattern:', match[0]);
+      console.log('🔢 Extracted number:', match[1]);
+      console.log('⏱️ Extracted unit:', match[2]);
+      
       let time = parseInt(match[1]); // Extract the number
       const unit = match[2].toLowerCase(); // Extract the unit (minute/hour)
       
@@ -65,19 +85,30 @@ function parseTaskFromText(text) {
       }
       
       // Determine if this is advance notice vs direct timing
-      if (match[0].includes('before') || match[0].includes('ahead')) {
+      const matchText = match[0].toLowerCase();
+      if (matchText.includes('before') || matchText.includes('ahead') || matchText.includes('early') || matchText.includes('advance')) {
         // "30 minutes before" = remind 30 minutes early
         reminderTime = time;
-      } else {
+        console.log('✅ Set reminder time to', time, 'minutes before');
+      } else if (matchText.includes('in ') && !matchText.includes('before')) {
         // "in 30 minutes" = do the task in 30 minutes (remind at due time)
         isDirectTiming = true;
         reminderTime = 0; // No advance notice needed
+        console.log('⏰ Direct timing detected - remind at due time');
       }
       
       // Clean up the text by removing the timing phrase
       normalizedText = originalText.replace(pattern, '').trim();
+      // Also clean up any leftover comma or connecting words
+      normalizedText = normalizedText.replace(/^[,\s]+|[,\s]+$/g, '').trim();
+      normalizedText = normalizedText.replace(/\s+/g, ' '); // Clean up multiple spaces
+      matchedPattern = match[0];
       break;
     }
+  }
+  
+  if (!matchedPattern) {
+    console.log('⚠️ No reminder pattern matched, using default 10 minutes');
   }
   
   // STEP 2: EXTRACT DUE DATE/TIME
@@ -158,6 +189,7 @@ function parseTaskFromText(text) {
     const match = originalText.match(pattern);
     if (match) {
       foundTimePhrase = match[0];
+      console.log('📅 Found time phrase:', foundTimePhrase);
       
       try {
         // Handle relative times: "in 2 hours", "after 30 minutes"
@@ -266,6 +298,9 @@ function parseTaskFromText(text) {
       }
       
       normalizedText = originalText.replace(pattern, '').trim();
+      // Clean up any leftover comma or connecting words from time extraction
+      normalizedText = normalizedText.replace(/^[,\s]+|[,\s]+$/g, '').trim();
+      normalizedText = normalizedText.replace(/\s+/g, ' '); // Clean up multiple spaces
       break;
     }
   }
@@ -274,12 +309,35 @@ function parseTaskFromText(text) {
   let taskTitle = '';
   let taskDescription = '';
   
+  // Additional cleanup patterns to remove any leftover timing phrases
+  const additionalCleanupPatterns = [
+    /,?\s*\d+\s*(?:minute|min|hour|hr)s?\s+(?:before|ahead|early|in\s+advance)/gi,
+    /,?\s*(?:remind\s+me|alert\s+me|notify\s+me)\s+\d+\s*(?:minute|min|hour|hr)s?\s+(?:before|ahead)/gi,
+    /,?\s*(?:reminder|notification)\s+\d+\s*(?:minute|min|hour|hr)s?\s+(?:before|ahead)/gi
+  ];
+  
   const cleanupPatterns = [
     /^(?:remind me to|remind me|set a reminder to|set reminder to|alert me to|notify me to|i need to|i should|please remind me to|can you remind me to)\s*/i,
     /^(?:task|todo|to do):\s*/i
   ];
   
   let cleanedText = normalizedText;
+  
+  // First, remove any leftover timing phrases
+  for (const pattern of additionalCleanupPatterns) {
+    cleanedText = cleanedText.replace(pattern, '').trim();
+  }
+  
+  // Then apply standard cleanup patterns
+  
+  // Then apply standard cleanup patterns
+  for (const pattern of cleanupPatterns) {
+    cleanedText = cleanedText.replace(pattern, '').trim();
+  }
+  
+  // Clean up extra commas and spaces
+  cleanedText = cleanedText.replace(/^[,\s]+|[,\s]+$/g, '').trim();
+  cleanedText = cleanedText.replace(/\s+/g, ' '); // Clean up multiple spaces
   for (const pattern of cleanupPatterns) {
     cleanedText = cleanedText.replace(pattern, '').trim();
   }
@@ -324,12 +382,16 @@ function parseTaskFromText(text) {
     taskDescription = taskDescription.charAt(0).toUpperCase() + taskDescription.slice(1);
   }
   
-  return {
+  const result = {
     title: taskTitle || originalText,
     description: taskDescription,
     dueDate: dueDate.toISOString(),
     reminderTime: reminderTime,
   };
+  
+  console.log('📊 Final parsed result:', result);
+  
+  return result;
 }
 
 /**

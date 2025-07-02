@@ -86,73 +86,473 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-  // Chatbot functionality
-  const chatbotButton = document.getElementById('chatbot-button');
-  const chatWindow = document.getElementById('chat-window');
-  const chatInput = document.getElementById('chat-input');
-  const chatSubmit = document.getElementById('chat-submit');
+ // Fixed Chatbot functionality
+const chatbotButton = document.getElementById('chatbot-button');
+const chatWindow = document.getElementById('chat-window');
+const chatInput = document.getElementById('chat-input');
+const chatSubmit = document.getElementById('chat-submit');
+const chatMessages = document.getElementById('chat-messages');
 
-  if (chatbotButton && chatWindow) {
-    chatbotButton.addEventListener('click', () => {
-      const isVisible = chatWindow.style.display === 'block';
-      chatWindow.style.display = isVisible ? 'none' : 'block';
-    });
-  }
+if (chatbotButton && chatWindow) {
+  chatbotButton.addEventListener('click', () => {
+    const isVisible = chatWindow.style.display === 'block';
+    chatWindow.style.display = isVisible ? 'none' : 'block';
+    
+    if (!isVisible && chatInput) {
+      setTimeout(() => chatInput.focus(), 100);
+    }
+  });
+}
 
-  if (chatSubmit && chatInput) {
-    chatSubmit.addEventListener('click', () => {
+if (chatSubmit && chatInput) {
+  chatSubmit.addEventListener('click', () => {
+    const message = chatInput.value.trim();
+    if (message) {
+      handleChatMessage(message);
+      chatInput.value = '';
+    }
+  });
+  
+  chatInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
       const message = chatInput.value.trim();
       if (message) {
         handleChatMessage(message);
         chatInput.value = '';
       }
+    }
+  });
+}
+
+// FIXED: Main chat message handler
+async function handleChatMessage(message) {
+  console.log('Chat message received:', message);
+  
+  try {
+    // Add user message to chat
+    addMessageToChat('user', message);
+    
+    // Show processing message
+    const processingId = addMessageToChat('bot', '🤔 Processing your request...');
+    
+    // FIXED: Send message to chatbot backend endpoint
+    const response = await fetch('/api/chatbot', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        message: message,
+        createTask: true // Ensure task creation is enabled
+      })
     });
     
-    chatInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        const message = chatInput.value.trim();
-        if (message) {
-          handleChatMessage(message);
-          chatInput.value = '';
-        }
+    // Remove processing message
+    removeMessage(processingId);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Server response error:', errorText);
+      throw new Error(`Server error: ${response.status} - ${errorText}`);
+    }
+    
+    const result = await response.json();
+    console.log('Server response:', result);
+    
+    // FIXED: Handle different response formats
+    if (result.error) {
+      addMessageToChat('bot', `❌ Error: ${result.error}`);
+      return;
+    }
+    
+    // Check if task was successfully created on backend
+    if (result.success && result.task) {
+      // Task was created on backend, show success message
+      const task = result.task;
+      const dueDate = new Date(task.dueDate);
+      const formattedDate = dueDate.toLocaleString();
+      const reminderText = task.reminderTime === 0 ? 'right when due' : `${task.reminderTime} minutes before`;
+      
+      let successMessage = `✅ Task created successfully!\n\n`;
+      successMessage += `📋 **${task.title}**\n`;
+      successMessage += `📅 Due: ${formattedDate}\n`;
+      successMessage += `⏰ Reminder: ${reminderText}`;
+      
+      if (task.description) {
+        successMessage += `\n📝 Notes: ${task.description}`;
       }
+      
+      addMessageToChat('bot', successMessage);
+      
+      // FIXED: Refresh task list using multiple possible function names
+      refreshTaskList();
+      
+    } else if (result.parsedData) {
+      // Backend parsed but didn't create task, try frontend creation
+      const success = await createTaskFromChatbot(result.parsedData);
+      
+      if (success) {
+        const taskData = result.parsedData;
+        const dueDate = new Date(taskData.dueDate);
+        const formattedDate = dueDate.toLocaleString();
+        const reminderText = taskData.reminderTime === 0 ? 'right when due' : `${taskData.reminderTime} minutes before`;
+        
+        let successMessage = `✅ Task created successfully!\n\n`;
+        successMessage += `📋 **${taskData.title}**\n`;
+        successMessage += `📅 Due: ${formattedDate}\n`;
+        successMessage += `⏰ Reminder: ${reminderText}`;
+        
+        if (taskData.description) {
+          successMessage += `\n📝 Notes: ${taskData.description}`;
+        }
+        
+        addMessageToChat('bot', successMessage);
+        refreshTaskList();
+      } else {
+        addMessageToChat('bot', '⚠️ Task was processed but there was an issue saving it. Please check manually.');
+      }
+    } else {
+      addMessageToChat('bot', '❌ Sorry, I had trouble processing that request. Please try again.');
+    }
+    
+  } catch (error) {
+    console.error('Chat error:', error);
+    
+    // Remove any processing messages
+    const processingMsg = document.querySelector('.processing-message');
+    if (processingMsg) {
+      processingMsg.remove();
+    }
+    
+    // More specific error messages
+    if (error.message.includes('401') || error.message.includes('Authentication')) {
+      addMessageToChat('bot', '🔐 Please log in to create tasks.');
+    } else if (error.message.includes('404')) {
+      addMessageToChat('bot', '❌ Chatbot service not found. Please check server configuration.');
+    } else if (error.message.includes('Failed to fetch')) {
+      addMessageToChat('bot', '📡 Connection error. Please check your internet connection.');
+    } else {
+      addMessageToChat('bot', `❌ Error: ${error.message}. Please try again or create the task manually.`);
+    }
+  }
+}
+
+// FIXED: Enhanced task creation function
+async function createTaskFromChatbot(taskData) {
+  try {
+    console.log('Creating task from chatbot data:', taskData);
+    
+    // FIXED: Better task object structure
+    const newTask = {
+      id: Date.now().toString(),
+      title: taskData.title || 'Untitled Task',
+      description: taskData.description || '',
+      dueDate: taskData.dueDate,
+      reminderTime: parseInt(taskData.reminderTime) || 10,
+      reminderMinutesBefore: parseInt(taskData.reminderTime) || 10,
+      completed: false,
+      isCompleted: false,
+      createdAt: new Date().toISOString(),
+      category: 'chatbot',
+      userId: 'frontend-user' // Fallback for frontend-only systems
+    };
+    
+    // FIXED: Try multiple methods to save the task
+    let taskCreated = false;
+    
+    // Method 1: Try existing addTask function
+    if (typeof addTask === 'function') {
+      try {
+        const result = await addTask(newTask);
+        taskCreated = !!result;
+        console.log('Task created via addTask function');
+      } catch (e) {
+        console.warn('addTask function failed:', e);
+      }
+    }
+    
+    // Method 2: Try submitting via existing form if addTask failed
+    if (!taskCreated && typeof submitTask === 'function') {
+      try {
+        const result = await submitTask(newTask);
+        taskCreated = !!result;
+        console.log('Task created via submitTask function');
+      } catch (e) {
+        console.warn('submitTask function failed:', e);
+      }
+    }
+    
+    // Method 3: Try creating via API directly
+    if (!taskCreated) {
+      try {
+        const response = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(newTask)
+        });
+        
+        if (response.ok) {
+          taskCreated = true;
+          console.log('Task created via direct API call');
+        }
+      } catch (e) {
+        console.warn('Direct API call failed:', e);
+      }
+    }
+    
+    // Method 4: Fallback to localStorage
+    if (!taskCreated) {
+      try {
+        const existingTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+        existingTasks.push(newTask);
+        localStorage.setItem('tasks', JSON.stringify(existingTasks));
+        taskCreated = true;
+        console.log('Task created via localStorage');
+      } catch (e) {
+        console.error('localStorage fallback failed:', e);
+      }
+    }
+    
+    // Set up reminder if task was created successfully
+    if (taskCreated && taskData.reminderTime && parseInt(taskData.reminderTime) > 0) {
+      scheduleReminder(newTask);
+    }
+    
+    console.log('Task creation result:', taskCreated);
+    return taskCreated;
+    
+  } catch (error) {
+    console.error('Error creating task from chatbot:', error);
+    return false;
+  }
+}
+
+// FIXED: Enhanced reminder scheduling
+function scheduleReminder(task) {
+  try {
+    const dueDate = new Date(task.dueDate);
+    const reminderTime = parseInt(task.reminderTime) || 10;
+    const reminderDate = new Date(dueDate.getTime() - (reminderTime * 60 * 1000));
+    const now = new Date();
+    
+    console.log('Scheduling reminder:', {
+      task: task.title,
+      dueDate: dueDate.toISOString(),
+      reminderDate: reminderDate.toISOString(),
+      minutesFromNow: Math.round((reminderDate.getTime() - now.getTime()) / 1000 / 60)
+    });
+    
+    if (reminderDate > now) {
+      const timeUntilReminder = reminderDate.getTime() - now.getTime();
+      
+      // Don't schedule reminders more than 24 hours in advance (browser limitations)
+      if (timeUntilReminder <= 24 * 60 * 60 * 1000) {
+        setTimeout(() => {
+          showReminder(task, reminderTime);
+        }, timeUntilReminder);
+        
+        console.log(`Reminder scheduled for "${task.title}" in ${Math.round(timeUntilReminder / 1000 / 60)} minutes`);
+      } else {
+        console.log('Reminder too far in future, not scheduling');
+      }
+    } else {
+      console.log('Reminder time has already passed');
+    }
+  } catch (error) {
+    console.error('Error scheduling reminder:', error);
+  }
+}
+
+// FIXED: Better reminder display
+function showReminder(task, minutesBefore) {
+  const reminderMessage = `⏰ Reminder: ${task.title}\nDue in ${minutesBefore} minutes`;
+  
+  // Try notification first
+  if ('Notification' in window && Notification.permission === 'granted') {
+    const notification = new Notification(`Reminder: ${task.title}`, {
+      body: `Due in ${minutesBefore} minutes`,
+      icon: '/favicon.ico',
+      tag: `reminder-${task.id}` // Prevent duplicate notifications
+    });
+    
+    // Auto-close after 10 seconds
+    setTimeout(() => notification.close(), 10000);
+  } 
+  
+  // Always show alert as backup
+  alert(reminderMessage);
+  
+  // Also add to chat if available
+  if (chatMessages) {
+    addMessageToChat('bot', `⏰ **Reminder Alert!**\n\n${task.title}\nDue in ${minutesBefore} minutes`);
+  }
+}
+
+// FIXED: Comprehensive task list refresh function
+function refreshTaskList() {
+  const refreshFunctions = [
+    'loadTasks',
+    'renderTasks',
+    'refreshTasks',
+    'updateTaskList',
+    'fetchTasks',
+    'displayTasks'
+  ];
+  
+  let refreshed = false;
+  
+  for (const funcName of refreshFunctions) {
+    if (typeof window[funcName] === 'function') {
+      try {
+        window[funcName]();
+        console.log(`Tasks refreshed using ${funcName}`);
+        refreshed = true;
+        break;
+      } catch (e) {
+        console.warn(`${funcName} failed:`, e);
+      }
+    }
+  }
+  
+  if (!refreshed) {
+    console.log('No task refresh function found, triggering page refresh as fallback');
+    // As a last resort, refresh the page (only if we're sure tasks were created)
+    setTimeout(() => {
+      if (confirm('Task created! Refresh page to see it in your task list?')) {
+        window.location.reload();
+      }
+    }, 1000);
+  }
+}
+
+// FIXED: Enhanced message display
+function addMessageToChat(sender, message) {
+  if (!chatMessages) {
+    console.log(`${sender.toUpperCase()}: ${message}`);
+    if (sender === 'bot') {
+      setTimeout(() => alert(`Rachel: ${message.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\n/g, ' ')}`), 100);
+    }
+    return null;
+  }
+  
+  const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+  const messageDiv = document.createElement('div');
+  messageDiv.id = messageId;
+  messageDiv.className = `chat-message ${sender}-message`;
+  
+  if (message.includes('Processing')) {
+    messageDiv.classList.add('processing-message');
+  }
+  
+  // Better message formatting
+  let formattedMessage = message
+    .replace(/\n/g, '<br>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/📋|📅|⏰|📝|✅|❌|⚠️|🔐|📡|⏰/g, '<span class="emoji">$&</span>');
+  
+  messageDiv.innerHTML = `
+    <div class="message-content">
+      <div class="message-sender">${sender === 'user' ? 'You' : 'Rachel'}</div>
+      <div class="message-text">${formattedMessage}</div>
+      <div class="message-time">${new Date().toLocaleTimeString()}</div>
+    </div>
+  `;
+  
+  chatMessages.appendChild(messageDiv);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  
+  return messageId;
+}
+
+function removeMessage(messageId) {
+  if (messageId) {
+    const messageElement = document.getElementById(messageId);
+    if (messageElement) {
+      messageElement.remove();
+    }
+  }
+}
+
+// FIXED: Better initialization
+function initializeChat() {
+  // Request notification permission
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().then(permission => {
+      console.log('Notification permission:', permission);
     });
   }
+  
+  // Add welcome message only if chat is empty
+  if (chatMessages && chatMessages.children.length === 0) {
+    const welcomeMessage = `👋 Hi! I'm Rachel, your task assistant!
 
-  // Helper functions
-  function resetForm() {
-    if (taskForm) {
-      taskForm.reset();
-    }
-    isEditMode = false;
-    editingTaskId = null;
-    
-    // Update form title
-    const formTitle = document.querySelector('.form-title');
-    if (formTitle) {
-      formTitle.textContent = 'Create New Task';
-    }
-  }
+I can help you create tasks and reminders. Try saying:
 
-  function handleChatMessage(message) {
-    console.log('Chat message received:', message);
-    
-    // Simple chat response logic
-    let response = "I'm Rachel, your task assistant! ";
-    
-    if (message.toLowerCase().includes('add') || message.toLowerCase().includes('create')) {
-      response += "I can help you create a new task. Try using the + button to add a detailed task!";
-    } else if (message.toLowerCase().includes('help')) {
-      response += "I can help you manage your tasks. You can create, edit, delete, and search through your tasks.";
-    } else {
-      response += "I understand you said: '" + message + "'. How can I help you with your tasks today?";
-    }
-    
-    // Simple alert for now - you can replace with a proper chat interface later
-    setTimeout(() => {
-      alert('Rachel: ' + response);
-    }, 500);
+• "Remind me to call mom at 3 PM"
+• "Meeting tomorrow at 2:30, remind me 15 minutes before"  
+• "Take out trash tonight at 8 PM"
+• "Dentist appointment Friday at 10 AM"
+• "Add reminder to buy groceries this evening"
+
+Just type naturally and I'll create the task for you!`;
+
+    addMessageToChat('bot', welcomeMessage);
   }
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('Chatbot initializing...');
+  initializeChat();
+});
+
+// FIXED: Test function with better examples
+function testChatbot() {
+  const testMessages = [
+    "add reminder to take out trash at 3 pm",
+    "remind me to call mom tomorrow at 2:30 PM, remind me 30 minutes before",
+    "meeting with team on Friday at 10 AM",
+    "remind me in 1 hour to check emails",
+    "add task buy groceries tonight"
+  ];
+  
+  console.log('Test messages for chatbot:', testMessages);
+  
+  // Test the first message
+  if (testMessages.length > 0) {
+    console.log('Testing with:', testMessages[0]);
+    handleChatMessage(testMessages[0]);
+  }
+}
+
+// Helper function for debugging
+function debugChatbot() {
+  console.log('Chatbot Debug Info:');
+  console.log('- Chat elements found:', {
+    button: !!chatbotButton,
+    window: !!chatWindow,
+    input: !!chatInput,
+    submit: !!chatSubmit,
+    messages: !!chatMessages
+  });
+  
+  console.log('- Available task functions:', {
+    addTask: typeof addTask,
+    submitTask: typeof submitTask,
+    loadTasks: typeof loadTasks,
+    renderTasks: typeof renderTasks
+  });
+  
+  console.log('- Notification permission:', 
+    'Notification' in window ? Notification.permission : 'Not supported'
+  );
+}
+
+// Expose debug function globally
+window.debugChatbot = debugChatbot;
+window.testChatbot = testChatbot;
 
   // AUTHENTICATION FUNCTIONS
   async function checkAuthState() {
